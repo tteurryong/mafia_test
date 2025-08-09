@@ -394,4 +394,17 @@
     // 동점이면 랜덤 선택
     const executed = candidates[Math.floor(Math.random() * candidates.length)];
 
-    if(executed === '
+    if(executed === 'pass') {
+      log('\n투표 결과 처형하지 않기로 결정되었습니다.');
+    } else {
+      const executedId = parseInt(executed);
+      gameState.players[executedId].alive = false;
+      log(`\n투표 결과 ${executedId + 1}번 플레이어가 처형되었습니다.`);
+    }
+    renderPlayers();
+
+    if(checkWin()) {
+      endGame();
+    } else {
+      setTimeout(nightPhase, 3000);
+    }
