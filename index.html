@@ -3,408 +3,407 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>싱글 플레이어 마피아 게임</title>
+<title>싱글마피아 텍스트 게임 (역할 행동 포함)</title>
 <style>
-  body {
-    background: #121212;
-    color: #eee;
-    font-family: 'Malgun Gothic', sans-serif;
-    margin: 0; padding: 20px;
-    display: flex; justify-content: center;
-  }
-  #game {
-    max-width: 600px;
-    width: 100%;
-  }
-  h1 {
-    text-align: center;
-    margin-bottom: 10px;
-  }
-  #setup {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  select, button {
-    padding: 8px 12px;
-    margin: 5px;
-    border-radius: 5px;
-    border: none;
-    background: #333;
-    color: #eee;
-    cursor: pointer;
-  }
-  button:hover, select:hover {
-    background: #555;
-  }
-  #messages {
-    background: #222;
-    border-radius: 8px;
-    padding: 15px;
-    min-height: 200px;
-    max-height: 350px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    font-size: 15px;
-  }
-  #players {
-    margin-top: 20px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-  }
-  .player {
-    padding: 8px 14px;
-    border-radius: 6px;
-    user-select: none;
-    cursor: default;
-    background: #444;
-    color: #eee;
-    min-width: 50px;
-    text-align: center;
-  }
-  .player.alive {
-    background: #28a745;
-    cursor: default;
-  }
-  .player.dead {
-    background: #6c757d;
-    text-decoration: line-through;
-    color: #aaa;
-  }
-  .player.you {
-    border: 2px solid #ffc107;
-  }
-  #inputSection {
-    margin-top: 20px;
-    text-align: center;
-  }
-  #inputSection button {
-    min-width: 90px;
-  }
+  body { font-family: 'Malgun Gothic', sans-serif; background: #121212; color: #eee; margin: 0; padding: 20px; }
+  #game { max-width: 600px; margin: auto; }
+  h1 { text-align: center; }
+  button { background: #444; border: none; padding: 10px 15px; margin: 5px; color: #eee; cursor: pointer; border-radius: 5px; }
+  button:hover { background: #666; }
+  #messages { min-height: 150px; background: #222; padding: 15px; border-radius: 8px; margin-top: 10px; white-space: pre-wrap; }
+  #players { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .player { background: #333; padding: 8px 12px; border-radius: 6px; cursor: pointer; user-select: none; }
+  .player.alive { background: #28a745; }
+  .player.dead { background: #6c757d; text-decoration: line-through; cursor: default; }
+  .player.you { border: 2px solid #ffc107; }
+  #inputSection { margin-top: 20px; }
+  select { padding: 6px 10px; border-radius: 5px; border: none; }
 </style>
 </head>
 <body>
 <div id="game">
-  <h1>싱글 플레이어 마피아 게임</h1>
+  <h1>싱글마피아 텍스트 게임 (역할 행동 포함)</h1>
+
   <div id="setup">
     <label>참가 인원 수: 
       <select id="playerCount"></select>
     </label>
     <button id="startBtn">게임 시작</button>
   </div>
+
   <div id="messages"></div>
   <div id="players"></div>
   <div id="inputSection"></div>
 </div>
 
-<!-- 배경음악 -->
-<audio id="bgm" src="https://cdn.pixabay.com/download/audio/2022/02/08/audio_2c0c0c2a3d.mp3?filename=chill-vibes-13902.mp3" loop autoplay></audio>
-
 <script>
-  // DOM 요소
-  const playerCountSelect = document.getElementById('playerCount');
-  const startBtn = document.getElementById('startBtn');
-  const messages = document.getElementById('messages');
-  const playersDiv = document.getElementById('players');
-  const inputSection = document.getElementById('inputSection');
-
-  // 참가 인원 선택 옵션 채우기 (3~12명)
-  for(let i=3; i<=12; i++) {
-    let opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = i + '명';
-    playerCountSelect.appendChild(opt);
-  }
-
-  // 게임 상태 객체
-  let gameState = {};
-
-  // 역할 배분 함수
-  function assignRoles(n) {
-    const mafiaCount = Math.max(1, Math.floor(n / 4));
-    const roles = [];
-    for(let i=0; i<mafiaCount; i++) roles.push('마피아');
-    if(n >= 6) {
-      roles.push('의사');
-      roles.push('경찰');
+  // 역할 할당 함수
+  const rolesByCount = (n) => {
+    let mafiaCount = Math.max(1, Math.floor(n / 4));
+    let roles = [];
+    roles.push(...Array(mafiaCount).fill("마피아"));
+    if (n >= 6) {
+      roles.push("의사");
+      roles.push("경찰");
     }
-    while(roles.length < n) roles.push('시민');
-    for(let i=roles.length-1; i>0; i--) {
-      let j = Math.floor(Math.random() * (i+1));
+    let citizenCount = n - roles.length;
+    roles.push(...Array(citizenCount).fill("시민"));
+    for (let i = roles.length - 1; i > 0; i--) {
+      let j = Math.floor(Math.random() * (i + 1));
       [roles[i], roles[j]] = [roles[j], roles[i]];
     }
     return roles;
+  };
+
+  const playerCountSelect = document.getElementById("playerCount");
+  for(let i=3; i<=12; i++) {
+    let opt = document.createElement("option");
+    opt.value = i; opt.textContent = i + "명";
+    playerCountSelect.appendChild(opt);
   }
 
-  // 메시지 출력, clear=true면 초기화
-  function log(text, clear=false) {
-    if(clear) messages.textContent = '';
-    messages.textContent += text + '\n';
+  const startBtn = document.getElementById("startBtn");
+  const messages = document.getElementById("messages");
+  const playersDiv = document.getElementById("players");
+  const inputSection = document.getElementById("inputSection");
+
+  let gameState = {};
+
+  function logMessage(text, clear=false) {
+    if(clear) messages.textContent = "";
+    messages.textContent += text + "\n";
     messages.scrollTop = messages.scrollHeight;
   }
 
-  // 플레이어 UI 렌더링
   function renderPlayers() {
-    playersDiv.innerHTML = '';
+    playersDiv.innerHTML = "";
     gameState.players.forEach(p => {
-      const div = document.createElement('div');
-      div.classList.add('player');
-      div.textContent = (p.id+1) + (p.id === 0 ? ' (당신)' : '');
-      div.classList.add(p.alive ? 'alive' : 'dead');
-      if(p.id === 0) div.classList.add('you');
+      let div = document.createElement("div");
+      div.classList.add("player");
+      div.textContent = (p.id + 1) + (p.id === 0 ? " (당신)" : "");
+      div.dataset.id = p.id;
+      if (p.alive) div.classList.add("alive");
+      else div.classList.add("dead");
+      if (p.id === 0) div.classList.add("you");
       playersDiv.appendChild(div);
     });
   }
 
-  // 살아있는 플레이어 반환
-  function alivePlayers() {
+  function getAlive() {
     return gameState.players.filter(p => p.alive);
   }
 
-  // 게임 시작
   startBtn.onclick = () => {
-    const n = parseInt(playerCountSelect.value);
-    if(isNaN(n) || n < 3 || n > 12) {
-      alert('3명 이상 12명 이하로 선택해주세요.');
-      return;
-    }
-    startGame(n);
+    messages.textContent = "";
+    inputSection.innerHTML = "";
+    startGame();
   };
 
-  function startGame(n) {
-    const roles = assignRoles(n);
+  function startGame() {
+    let n = parseInt(playerCountSelect.value);
+    let roles = rolesByCount(n);
     gameState = {
-      players: roles.map((r,i) => ({id:i, role:r, alive:true})),
-      phase: 'night',
-      day: 0,
-      night: 0,
-      nightActions: {},
+      players: roles.map((r,i) => ({role:r, alive:true, id:i})),
+      phase: 'intro',
+      dayCount: 0,
+      nightCount: 0,
       playerVote: null,
-      policeKnown: {}, // 경찰 조사 결과 저장
+      nightActions: {mafiaKill:null, doctorSave:null, policeCheck:null},
+      policeReport: null,
     };
-    log('게임 시작!\n당신은 1번 플레이어입니다. 역할은 비밀입니다.\n', true);
+    logMessage("게임이 시작되었습니다!", true);
+    logMessage("당신은 1번 플레이어입니다. 역할은 비밀입니다.\n");
     renderPlayers();
-    setTimeout(nightPhase, 1500);
+    setTimeout(() => nextPhase('night'), 2000);
   }
 
-  // 밤 단계
+  function nextPhase(phase) {
+    gameState.phase = phase;
+    inputSection.innerHTML = "";
+    if(phase === 'night') nightPhase();
+    else if(phase === 'day') dayPhase();
+    else if(phase === 'vote') votePhase();
+    else if(phase === 'end') endPhase();
+  }
+
   function nightPhase() {
-    gameState.night++;
-    gameState.nightActions = { mafiaKill: null, doctorSave: null, policeCheck: null };
-    log(`\n🌙 밤 ${gameState.night}일차 시작`);
+    gameState.nightCount++;
+    gameState.nightActions = {mafiaKill:null, doctorSave:null, policeCheck:null};
+    gameState.policeReport = null;
+    logMessage(`\n🌙 밤 ${gameState.nightCount}일차가 시작됩니다.`);
 
-    const me = gameState.players[0];
-    inputSection.innerHTML = '';
-
-    if(!me.alive) {
-      log('당신은 죽었습니다. 밤 행동 불가.');
+    if(!getAlive().some(p => p.id === 0 && p.alive)) {
+      logMessage("당신은 죽었으므로 밤 행동이 없습니다.");
       setTimeout(aiNightActions, 1500);
       return;
     }
 
-    if(me.role === '마피아') {
-      log('당신은 마피아입니다. 누구를 죽일지 선택하세요.');
-      setupTargetSelection('mafiaKill', false);
-    } else if(me.role === '의사') {
-      log('당신은 의사입니다. 누구를 살릴지 선택하세요.');
-      setupTargetSelection('doctorSave', true);
-    } else if(me.role === '경찰') {
-      log('당신은 경찰입니다. 누구를 조사할지 선택하세요.');
-      setupTargetSelection('policeCheck', false);
+    let me = gameState.players[0];
+
+    if(me.role === "마피아") {
+      logMessage("당신은 마피아입니다. 죽일 대상을 선택하세요.");
+      mafiaChooseTarget();
+    } else if(me.role === "의사") {
+      logMessage("당신은 의사입니다. 살릴 대상을 선택하세요.");
+      doctorChooseTarget();
+    } else if(me.role === "경찰") {
+      logMessage("당신은 경찰입니다. 조사할 대상을 선택하세요.");
+      policeChooseTarget();
     } else {
-      log('당신은 시민입니다. 밤에는 할 일이 없습니다.');
+      logMessage("당신은 시민입니다. 밤에는 행동이 없습니다.");
       setTimeout(aiNightActions, 1500);
     }
   }
 
-  // 타겟 선택 UI 세팅
-  function setupTargetSelection(actionKey, allowSelf) {
-    const alive = alivePlayers();
-    inputSection.innerHTML = '';
-    alive.forEach(p => {
-      if(!allowSelf && p.id === 0) return;
-      const btn = document.createElement('button');
-      btn.textContent = (p.id+1) + '번 플레이어';
+  // 역할별 선택 UI 함수들
+  function mafiaChooseTarget() {
+    inputSection.innerHTML = "";
+    let targets = getAlive().filter(p => p.role !== "마피아");
+    targets.forEach(p => {
+      let btn = document.createElement("button");
+      btn.textContent = `${p.id + 1}번 플레이어`;
       btn.onclick = () => {
-        gameState.nightActions[actionKey] = p.id;
-        inputSection.innerHTML = '';
-        log(`선택 완료: ${p.id+1}번 플레이어`);
+        gameState.nightActions.mafiaKill = p.id;
+        inputSection.innerHTML = "";
+        logMessage(`마피아가 ${p.id + 1}번 플레이어를 죽이기로 선택했습니다.`);
         setTimeout(aiNightActions, 1000);
       };
       inputSection.appendChild(btn);
     });
   }
 
-  // AI 행동 수행 (밤)
-  function aiNightActions() {
-    // 마피아 AI 행동
-    if(!gameState.nightActions.mafiaKill) {
-      const mafiaAI = gameState.players.filter(p => p.alive && p.role === '마피아' && p.id !== 0);
-      if(mafiaAI.length > 0) {
-        // 의사 보호 안받는 사람 중 랜덤
-        let targets = gameState.players.filter(p => p.alive && p.role !== '마피아');
-        if(targets.length > 0) {
-          gameState.nightActions.mafiaKill = targets[Math.floor(Math.random() * targets.length)].id;
-          log(`AI 마피아가 ${gameState.nightActions.mafiaKill+1}번 플레이어를 공격 후보로 선정`);
-        }
-      }
-    }
-    // 의사 AI 행동: 살릴 사람 중에 랜덤, 본인 포함 가능
-    if(!gameState.nightActions.doctorSave) {
-      const doctorAI = gameState.players.filter(p => p.alive && p.role === '의사' && p.id !== 0);
-      if(doctorAI.length > 0) {
-        const candidates = gameState.players.filter(p => p.alive);
-        gameState.nightActions.doctorSave = candidates[Math.floor(Math.random() * candidates.length)].id;
-        log(`AI 의사가 ${gameState.nightActions.doctorSave+1}번 플레이어 치료 후보로 선정`);
-      }
-    }
-    // 경찰 AI 행동: 조사 대상 선정 (본인 제외)
-    if(!gameState.nightActions.policeCheck) {
-      const policeAI = gameState.players.filter(p => p.alive && p.role === '경찰' && p.id !== 0);
-      if(policeAI.length > 0) {
-        const candidates = gameState.players.filter(p => p.alive && p.id !== 0);
-        gameState.nightActions.policeCheck = candidates[Math.floor(Math.random() * candidates.length)].id;
-        log(`AI 경찰이 ${gameState.nightActions.policeCheck+1}번 플레이어 조사 후보로 선정`);
-      }
-    }
-    setTimeout(resolveNightActions, 2000);
-  }
-
-  // 밤 행동 결과 처리
-  function resolveNightActions() {
-    const { mafiaKill, doctorSave, policeCheck } = gameState.nightActions;
-
-    if(mafiaKill !== doctorSave) {
-      gameState.players[mafiaKill].alive = false;
-      log(`\n${mafiaKill+1}번 플레이어가 밤에 죽었습니다.`);
-    } else {
-      log(`\n의사가 ${doctorSave+1}번 플레이어를 치료해 생존했습니다.`);
-    }
-
-    if(policeCheck !== null) {
-      const role = gameState.players[policeCheck].role;
-      gameState.policeKnown[policeCheck] = role === '마피아';
-      log(`경찰이 ${policeCheck+1}번 플레이어를 조사했습니다: ${role === '마피아' ? '마피아 맞음' : '마피아 아님'}`);
-    }
-
-    renderPlayers();
-
-    if(checkWin()) {
-      endGame();
-    } else {
-      setTimeout(dayPhase, 3000);
-    }
-  }
-
-  // 낮 단계
-  function dayPhase() {
-    gameState.day++;
-    log(`\n☀ 낮 ${gameState.day}일차 시작`);
-    log('생존자들은 마피아를 찾아내기 위해 투표를 시작합니다.');
-    renderPlayers();
-    setupVote();
-  }
-
-  // 낮 투표 UI 세팅 (처형 안함 포함)
-  function setupVote() {
-    const me = gameState.players[0];
-    inputSection.innerHTML = '';
-
-    if(!me.alive) {
-      log('당신은 죽어서 투표 불가능. AI 투표 진행합니다.');
-      setTimeout(aiVote, 1500);
-      return;
-    }
-
-    const alive = alivePlayers().filter(p => p.id !== 0);
-
-    inputSection.innerHTML = '<p>누구를 처형할까요? (본인 제외, 처형 안함 가능)</p>';
-
-    alive.forEach(p => {
-      const btn = document.createElement('button');
-      btn.textContent = (p.id+1) + '번 플레이어';
+  function doctorChooseTarget() {
+    inputSection.innerHTML = "";
+    let targets = getAlive();
+    targets.forEach(p => {
+      let btn = document.createElement("button");
+      btn.textContent = `${p.id + 1}번 플레이어`;
       btn.onclick = () => {
-        inputSection.innerHTML = '';
-        log(`당신은 ${p.id+1}번 플레이어를 투표했습니다.`);
-        processVote(p.id);
+        gameState.nightActions.doctorSave = p.id;
+        inputSection.innerHTML = "";
+        logMessage(`의사가 ${p.id + 1}번 플레이어를 살리기로 선택했습니다.`);
+        setTimeout(aiNightActions, 1000);
       };
       inputSection.appendChild(btn);
     });
-
-    // 처형 안함(투표 패스) 버튼
-    const passBtn = document.createElement('button');
-    passBtn.textContent = '처형 안함 (투표 패스)';
-    passBtn.onclick = () => {
-      inputSection.innerHTML = '';
-      log('당신은 처형하지 않기로 투표했습니다.');
-      processVote(null); // null은 패스
-    };
-    inputSection.appendChild(passBtn);
   }
 
-  // 낮 투표 처리
-  function processVote(playerVoted) {
-    const votes = {};
-
-    // 내 투표 (playerVoted가 null이면 패스 투표)
-    if(playerVoted === null) {
-      votes['pass'] = 1;
-    } else {
-      votes[playerVoted] = 1;
-    }
-
-    // AI 투표
-    const alive = alivePlayers().filter(p => p.id !== 0);
-    alive.forEach(p => {
-      const candidates = alive.filter(x => x.id !== p.id);
-      // AI도 처형 안함 투표 가능 (10% 확률)
-      let voteOptions = [...candidates.map(x => x.id), 'pass'];
-      let voteWeights = voteOptions.map(opt => {
-        if(opt === 'pass') return 0.1; // 10% 확률로 패스
-        const pl = gameState.players.find(p => p.id === opt);
-        if(p.role === '마피아') {
-          // 마피아는 시민 우선 처형 후보로
-          return pl.role !== '마피아' ? 1.0 : 0.1;
-        } else {
-          // 시민은 무작위 균등 확률
-          return 1.0;
-        }
-      });
-
-      // 가중치에 따른 랜덤 선택 함수
-      function weightedRandom(options, weights) {
-        let sum = weights.reduce((a,b) => a+b, 0);
-        let r = Math.random()*sum;
-        for(let i=0; i<options.length; i++) {
-          r -= weights[i];
-          if(r <= 0) return options[i];
-        }
-        return options[options.length-1];
-      }
-
-      const choice = weightedRandom(voteOptions, voteWeights);
-      votes[choice] = (votes[choice] || 0) + 1;
+  function policeChooseTarget() {
+    inputSection.innerHTML = "";
+    let targets = getAlive().filter(p => p.id !== 0);
+    targets.forEach(p => {
+      let btn = document.createElement("button");
+      btn.textContent = `${p.id + 1}번 플레이어`;
+      btn.onclick = () => {
+        gameState.nightActions.policeCheck = p.id;
+        inputSection.innerHTML = "";
+        logMessage(`경찰이 ${p.id + 1}번 플레이어를 조사하기로 선택했습니다.`);
+        setTimeout(aiNightActions, 1000);
+      };
+      inputSection.appendChild(btn);
     });
+  }
 
-    // 최다 득표자 찾기
-    const maxVotes = Math.max(...Object.values(votes));
-    const candidates = Object.keys(votes).filter(k => votes[k] === maxVotes);
+  function aiNightActions() {
+    let alive = getAlive();
 
-    // 동점이면 랜덤 선택
-    const executed = candidates[Math.floor(Math.random() * candidates.length)];
-
-    if(executed === 'pass') {
-      log('\n투표 결과 처형하지 않기로 결정되었습니다.');
-    } else {
-      const executedId = parseInt(executed);
-      gameState.players[executedId].alive = false;
-      log(`\n투표 결과 ${executedId + 1}번 플레이어가 처형되었습니다.`);
+    if(gameState.nightActions.mafiaKill === null) {
+      let mafiaAI = alive.filter(p => p.role === "마피아" && p.id !== 0);
+      if(mafiaAI.length > 0) {
+        let targets = alive.filter(p => p.role !== "마피아");
+        if(targets.length > 0) {
+          gameState.nightActions.mafiaKill = targets[Math.floor(Math.random() * targets.length)].id;
+          logMessage(`AI 마피아가 ${gameState.nightActions.mafiaKill + 1}번 플레이어를 공격 대상으로 선택했습니다.`);
+        }
+      }
     }
+
+    if(gameState.nightActions.doctorSave === null) {
+      let doctorAI = alive.filter(p => p.role === "의사" && p.id !== 0);
+      if(doctorAI.length > 0) {
+        let targets = alive;
+        gameState.nightActions.doctorSave = targets[Math.floor(Math.random() * targets.length)].id;
+        logMessage(`AI 의사가 ${gameState.nightActions.doctorSave + 1}번 플레이어를 치료 대상으로 선택했습니다.`);
+      }
+    }
+
+    if(gameState.nightActions.policeCheck === null) {
+      let policeAI = alive.filter(p => p.role === "경찰" && p.id !== 0);
+      if(policeAI.length > 0) {
+        let targets = alive.filter(p => p.id !== 0);
+        if(targets.length > 0) {
+          gameState.nightActions.policeCheck = targets[Math.floor(Math.random() * targets.length)].id;
+          logMessage(`AI 경찰이 ${gameState.nightActions.policeCheck + 1}번 플레이어를 조사 대상으로 선택했습니다.`);
+        }
+      }
+    }
+
+    setTimeout(resolveNightActions, 2000);
+  }
+
+  function resolveNightActions() {
+    const { mafiaKill, doctorSave, policeCheck } = gameState.nightActions;
+    if(mafiaKill !== null && mafiaKill !== doctorSave) {
+      gameState.players[mafiaKill].alive = false;
+      logMessage(`\n밤에 ${mafiaKill + 1}번 플레이어가 죽었습니다.`);
+    } else if(mafiaKill !== null && mafiaKill === doctorSave) {
+      logMessage(`\n의사가 ${doctorSave + 1}번 플레이어를 살려서 죽지 않았습니다.`);
+    } else {
+      logMessage("\n마피아가 공격하지 않았습니다.");
+    }
+
+    if(policeCheck !== null) {
+      let isMafia = gameState.players[policeCheck].role === "마피아";
+      gameState.policeReport = { target: policeCheck, isMafia };
+      logMessage(`경찰이 ${policeCheck + 1}번 플레이어를 조사했습니다.`);
+    } else {
+      gameState.policeReport = null;
+    }
+
     renderPlayers();
 
-    if(checkWin()) {
-      endGame();
-    } else {
-      setTimeout(nightPhase, 3000);
+    if(!gameState.players[0].alive) {
+      logMessage("\n당신이 죽었습니다. 게임이 자동 진행됩니다.");
+      setTimeout(() => nextPhase('day'), 2000);
+      return;
     }
+
+    if(checkWin()) {
+      setTimeout(() => nextPhase('end'), 2000);
+    } else {
+      setTimeout(() => nextPhase('day'), 2000);
+    }
+  }
+
+  function dayPhase() {
+    gameState.dayCount++;
+    logMessage(`\n☀ 낮 ${gameState.dayCount}일차가 시작되었습니다.`);
+
+    if(gameState.policeReport) {
+      const { target, isMafia } = gameState.policeReport;
+      logMessage(`경찰 조사 결과: ${target + 1}번 플레이어는 ${isMafia ? "마피아" : "마피아가 아닙니다"}.`);
+    }
+
+    logMessage("생존자들은 마피아를 찾아내기 위해 투표를 시작합니다.");
+    renderPlayers();
+
+    if(!gameState.players[0].alive) {
+      logMessage("당신은 죽었으므로 투표할 수 없습니다. AI가 투표를 진행합니다.");
+      setTimeout(() => aiVote(), 1500);
+    } else {
+      setupVote();
+    }
+  }
+
+  function setupVote() {
+    inputSection.innerHTML = "<p>누구를 처형할까요? (본인 제외)</p>";
+    let alivePlayers = getAlive().filter(p => p.id !== 0);
+    alivePlayers.forEach(p => {
+      let btn = document.createElement("button");
+      btn.textContent = `${p.id + 1}번 플레이어`;
+      btn.onclick = () => playerVote(p.id);
+      inputSection.appendChild(btn);
+    });
+  }
+
+  function playerVote(votedId) {
+    gameState.playerVote = votedId;
+    inputSection.innerHTML = "";
+    logMessage(`당신은 ${votedId + 1}번 플레이어를 투표했습니다.`);
+    setTimeout(() => aiVote(votedId), 1000);
+  }
+
+  function aiVote(playerVoted=null) {
+    let votes = {};
+    function addVote(id) { votes[id] = (votes[id] || 0) + 1; }
+
+    if(playerVoted !== null) addVote(playerVoted);
+
+    let alivePlayers = getAlive().filter(p => p.id !== 0);
+
+    alivePlayers.forEach(p => {
+      if(p.id === 0) return; // 본인은 이미 투표했음
+      let candidates = getAlive().filter(x => x.id !== p.id);
+      let voteTarget;
+
+      if(p.role === "마피아") {
+        let nonMafia = candidates.filter(x => x.role !== "마피아");
+        voteTarget = nonMafia.length ? nonMafia[Math.floor(Math.random() * nonMafia.length)].id : candidates[Math.floor(Math.random() * candidates.length)].id;
+      } else {
+        // 시민, 의사, 경찰은 랜덤 투표
+        voteTarget = candidates[Math.floor(Math.random() * candidates.length)].id;
+      }
+      addVote(voteTarget);
+    });
+
+    // 투표 결과 출력
+    logMessage("\n투표 결과:");
+    Object.entries(votes).forEach(([id,count]) => {
+      logMessage(`${parseInt(id) + 1}번 플레이어: ${count}표`);
+    });
+
+    // 최대 득표 찾기
+    let maxVotes = 0;
+    let candidates = [];
+    for(const [id,count] of Object.entries(votes)) {
+      if(count > maxVotes) {
+        maxVotes = count;
+        candidates = [parseInt(id)];
+      } else if(count === maxVotes) {
+        candidates.push(parseInt(id));
+      }
+    }
+
+    // 과반수 또는 다수결 처리 (투표인원 과반수는 아니지만 최대 득표자)
+    let aliveCount = getAlive().length;
+    let executedId = null;
+
+    if(candidates.length === 1) {
+      executedId = candidates[0];
+    } else {
+      // 동점이면 무처형
+      logMessage("투표가 동점으로 아무도 처형되지 않았습니다.");
+    }
+
+    if(executedId !== null) {
+      gameState.players[executedId].alive = false;
+      logMessage(`\n${executedId + 1}번 플레이어가 처형되었습니다.`);
+    }
+
+    renderPlayers();
+
+    if(!gameState.players[0].alive) {
+      logMessage("\n당신이 처형되어 게임이 종료됩니다.");
+      setTimeout(() => nextPhase('end'), 2000);
+      return;
+    }
+
+    if(checkWin()) {
+      setTimeout(() => nextPhase('end'), 2000);
+    } else {
+      setTimeout(() => nextPhase('night'), 3000);
+    }
+  }
+
+  function checkWin() {
+    let alive = getAlive();
+    let mafiaAlive = alive.filter(p => p.role === "마피아").length;
+    let othersAlive = alive.length - mafiaAlive;
+
+    if(mafiaAlive === 0) {
+      logMessage("\n🎉 시민팀이 승리했습니다! 마피아가 모두 제거되었습니다.");
+      return true;
+    } else if(mafiaAlive >= othersAlive) {
+      logMessage("\n🕵️‍♂️ 마피아팀이 승리했습니다! 마피아가 동수 이상입니다.");
+      return true;
+    }
+    return false;
+  }
+
+  function endPhase() {
+    logMessage("\n게임이 종료되었습니다.");
+    inputSection.innerHTML = '<button onclick="location.reload()">다시 시작</button>';
+  }
+</script>
+</body>
+</html>
